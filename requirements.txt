@@ -1,0 +1,5 @@
+flet
+fpdf
+requests
+gTTS
+pillow
