@@ -33,16 +33,21 @@ def reproducir_audio(archivo_audio):
     except Exception as e:
         return f"Error al reproducir audio: {str(e)}"
 
+def mostrar_snackbar(page, mensaje):
+    page.snackbar = ft.SnackBar(ft.Text(mensaje), open=True)
+    page.add(page.snackbar)  # Añadir el SnackBar a la página
+    page.update()
+
 def traduccion_tab(page):
     espacio_extra = ft.Container(height=20)
     
     # TextField para el texto original
     texto_original_input = ft.TextField(
         label="Texto a traducir",
-        multiline=True,  # Permitir múltiples líneas
-        min_lines=10,  # Mínimo número de líneas visibles
-        max_lines=20,  # Máximo número de líneas visibles
-        width=500,  # Ancho del campo de texto
+        multiline=True,
+        min_lines=10,
+        max_lines=20,
+        width=500,
     )
 
     # Opciones con iconos de banderas
@@ -95,10 +100,7 @@ def traduccion_tab(page):
         idioma_destino = idioma_destino_input.value
         idioma_origen_input.value = idioma_destino
         idioma_destino_input.value = idioma_origen
-        texto_traducido = texto_traducido_input.value
-        texto_original = texto_original_input.value
-        texto_traducido_input.value = texto_original
-        texto_original_input.value = texto_traducido
+        texto_traducido_input.value, texto_original_input.value = texto_original_input.value, texto_traducido_input.value
         page.update()  # Actualiza la página para reflejar los cambios
 
     # Botón para intercambiar idiomas
@@ -111,7 +113,7 @@ def traduccion_tab(page):
     # TextField para el texto traducido
     texto_traducido_input = ft.TextField(
         label="Texto traducido",
-        multiline=True,  # Permitir múltiples líneas
+        multiline=True,
         min_lines=10,
         max_lines=20,
         width=500,
@@ -123,25 +125,18 @@ def traduccion_tab(page):
         
         if texto_traducido:  # Verifica que hay texto para leer
             try:
-                # Establece el idioma para gTTS
-                tts = gTTS(text=texto_traducido, lang=idioma_destino)  # Usa el acento del idioma destino
+                tts = gTTS(text=texto_traducido, lang=idioma_destino)
                 audio_file = "traduccion.mp3"
                 tts.save(audio_file)  # Guarda el archivo de audio
                 reproducir_audio(audio_file)  # Reproduce el audio
             except Exception as e:
-                page.snackbar = ft.SnackBar(ft.Text(f"Error al leer la traducción: {str(e)}"))
-                page.snackbar.open = True
-                page.add(page.snackbar)  # Añadir el SnackBar a la página
-                page.update()
+                mostrar_snackbar(page, f"Error al leer la traducción: {str(e)}")
 
     # Función para traducir el texto
     def traducir_texto(e):
         texto_original = texto_original_input.value.strip()
         if not texto_original:  # Verifica si el campo de texto está vacío
-            page.snackbar = ft.SnackBar(ft.Text("Por favor, ingresa un texto para traducir."))
-            page.snackbar.open = True
-            page.add(page.snackbar)  # Añadir el SnackBar a la página
-            page.update()
+            mostrar_snackbar(page, "Por favor, ingresa un texto para traducir.")
             return  # Sale de la función si el campo está vacío
 
         idioma_origen = idioma_origen_input.value
@@ -152,10 +147,7 @@ def traduccion_tab(page):
         
         # Si hay un error, mostrarlo
         if "Error" in traduccion:
-            page.snackbar = ft.SnackBar(ft.Text(traduccion))
-            page.snackbar.open = True
-            page.add(page.snackbar)  # Añadir el SnackBar a la página
-            page.update()
+            mostrar_snackbar(page, traduccion)
         else:
             # Mostrar el resultado en el cuadro de texto traducido
             texto_traducido_input.value = traduccion
@@ -167,7 +159,7 @@ def traduccion_tab(page):
         texto_traducido_input.value = ""
         page.update()
         
-    # Botón de traducción que llama a la función traducir_texto, y botón para borrar los campos textField
+    # Botones de acción
     boton_traducir = ft.ElevatedButton(text="Traducir", on_click=traducir_texto, tooltip="Traducir Texto")
     boton_borrar = ft.ElevatedButton(text="Borrar", on_click=borrar_texto, tooltip="Borrar Campos")
     boton_leer = ft.ElevatedButton(text="Leer Traducción", on_click=leer_texto_traducido, tooltip="Leer Texto Traducido")
@@ -175,7 +167,6 @@ def traduccion_tab(page):
     # Diseño de la pestaña con los elementos organizados
     return ft.Column([
         espacio_extra,
-        # Colocar el campo de texto original una vez, en su lugar correcto
         ft.Column(
             [
                 texto_original_input,  # Texto original en la primera línea
@@ -188,8 +179,8 @@ def traduccion_tab(page):
                     alignment=ft.MainAxisAlignment.CENTER
                 ),
             ],
-            alignment=ft.MainAxisAlignment.CENTER,  # Centrar todos los elementos verticalmente
-            horizontal_alignment=ft.CrossAxisAlignment.CENTER,  # Centrar horizontalmente
-            spacing=20,  # Añadir espacio entre los elementos
+            alignment=ft.MainAxisAlignment.CENTER,
+            horizontal_alignment=ft.CrossAxisAlignment.CENTER,
+            spacing=20,
         )
     ])

@@ -22,15 +22,24 @@ def reproducir(e, ruta):
 def listening_tab(page: ft.Page):
     espacio_extra = ft.Container(height=20)
 
+    # Ejemplo de mejora de la función guardar
     def guardar(e):
+        """Guarda la URL o MP3 en la base de datos."""
         nombre = nombre_input.value
-        url_o_mp3 = url_input.value  # Usaremos este campo para ambas cosas
+        url_o_mp3 = url_input.value
         if nombre and url_o_mp3:
-            guardar_url(nombre, url_o_mp3)  # Guardar directamente
+            guardar_url(nombre, url_o_mp3)
             nombre_input.value = ""
             url_input.value = ""
             page.update()
             cargar_listado()
+        else:
+            page.snack_bar = ft.SnackBar(
+                content=ft.Text("Por favor, completa ambos campos."),
+                duration=3000
+            )
+            page.snack_bar.open = True
+            page.update()
 
     def borrar(e):
         nombre_input.value = ""

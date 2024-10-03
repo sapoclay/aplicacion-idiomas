@@ -6,9 +6,15 @@ from db import crear_base_de_datos
 from opciones import opciones_tab
 
 
+
 def main(page: ft.Page):
 
-    crear_base_de_datos()
+    try:
+        crear_base_de_datos()
+    except Exception as e:
+        page.snackbar = ft.SnackBar(ft.Text(f"Error al inicializar la base de datos: {str(e)}"), open=True)
+        page.update()
+        return  # Termina la ejecución si hay un error en la base de datos
 
     # Configurar la ventana de la aplicación
     page.title = "Aplicación de Idiomas"

@@ -1,36 +1,74 @@
 import os
 import subprocess
 import sys
-import platform
+import venv
+import urllib.request
+
+# Ruta del entorno virtual
+venv_dir = os.path.join(os.getcwd(), "venv")
 
 def crear_entorno_virtual():
-    """Crear el entorno virtual si no existe."""
-    if not os.path.exists("venv"):
+    """Crea el entorno virtual si no existe."""
+    if not os.path.isdir(venv_dir):
         print("Creando entorno virtual...")
-        subprocess.check_call([sys.executable, "-m", "venv", "venv"])
+        venv.create(venv_dir, with_pip=False)  # No habilitamos pip aquí
+        print("Entorno virtual creado.")
+    else:
+        print("Entorno virtual ya existe.")
+
+def instalar_pip_si_no_existe():
+    """Instala pip manualmente si no está presente en el entorno virtual."""
+    pip_executable = os.path.join(venv_dir, "bin", "pip") if os.name != 'nt' else os.path.join(venv_dir, "Scripts", "pip.exe")
+    
+    if not os.path.isfile(pip_executable):
+        print("pip no encontrado, descargando e instalando pip...")
+        
+        # Descargar el script get-pip.py
+        get_pip_url = "https://bootstrap.pypa.io/get-pip.py"
+        get_pip_script = os.path.join(venv_dir, "get-pip.py")
+        
+        try:
+            urllib.request.urlretrieve(get_pip_url, get_pip_script)
+            # Instalar pip utilizando el script descargado
+            python_executable = os.path.join(venv_dir, "bin", "python") if os.name != 'nt' else os.path.join(venv_dir, "Scripts", "python.exe")
+            subprocess.check_call([python_executable, get_pip_script])
+            print("pip instalado exitosamente.")
+        except Exception as e:
+            print(f"Error al intentar instalar pip: {e}")
+            sys.exit(1)
+    return pip_executable
 
 def instalar_dependencias():
-    """Instalar las dependencias si es necesario."""
-    print("Instalando dependencias...")
-    pip_executable = os.path.join("venv", "Scripts", "pip") if platform.system() == "Windows" else os.path.join("venv", "bin", "pip")
-    subprocess.check_call([pip_executable, "install", "--upgrade", "pip"])  # Actualiza pip primero
-    subprocess.check_call([pip_executable, "install", "-r", "requirements.txt"])
+    """Instala las dependencias en el entorno virtual."""
+    # Verifica si pip está disponible e instálalo si no está presente
+    pip_executable = instalar_pip_si_no_existe()
+
+    # Actualizar pip, setuptools y wheel
+    print("Actualizando pip, setuptools, y wheel...")
+    subprocess.check_call([pip_executable, "install", "--upgrade", "pip", "setuptools", "wheel"])
     
-    # Asegúrate de actualizar flet
-    subprocess.check_call([pip_executable, "install", "--upgrade", "flet"])
+    # Instalar dependencias del archivo requirements.txt
+    print("Instalando dependencias desde requirements.txt...")
+    subprocess.check_call([pip_executable, "install", "-r", "requirements.txt"])
 
 def ejecutar_aplicacion():
-    """Ejecutar la aplicación en el entorno virtual."""
-    print("Ejecutando aplicación...")
-    python_executable = os.path.join("venv", "Scripts", "python") if platform.system() == "Windows" else os.path.join("venv", "bin", "python")
+    """Ejecuta la aplicación dentro del entorno virtual."""
+    python_executable = os.path.join(venv_dir, "bin", "python") if os.name != 'nt' else os.path.join(venv_dir, "Scripts", "python.exe")
+    
+    print("Ejecutando la aplicación...")
     subprocess.run([python_executable, "main.py"], check=True)
 
 if __name__ == "__main__":
-    crear_entorno_virtual()
+    try:
+        # Crear el entorno virtual si no existe
+        crear_entorno_virtual()
+        
+        # Instalar dependencias
+        instalar_dependencias()
+        
+        # Ejecutar la aplicación
+        ejecutar_aplicacion()
 
-    if not os.path.exists("requirements.txt"):
-        with open("requirements.txt", "w") as f:
-            f.write("flet\nfpdf\nrequests\ngTTS\nPillow\npystray\n")
-
-    instalar_dependencias()
-    ejecutar_aplicacion()
+    except Exception as e:
+        print(f"Error: {e}")
+        sys.exit(1)

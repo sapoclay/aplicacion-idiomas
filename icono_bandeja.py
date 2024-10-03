@@ -1,47 +1,34 @@
-import wx
+import pystray
+from pystray import MenuItem as item
+from PIL import Image
 import threading
 import sys
 
-class TrayIcon(wx.adv.TaskBarIcon):
-    def __init__(self, icon):
-        super().__init__()
-        self.SetIcon(icon, "Aplicación de Idiomas")
-        self.Bind(wx.adv.EVT_TASKBAR_LEFT_DCLICK, self.on_left_double_click)
-        self.Bind(wx.adv.EVT_TASKBAR_RIGHT_UP, self.on_right_click)
-        self.Bind(wx.adv.EVT_TASKBAR_MENU, self.on_right_click)
+# Función para cargar el ícono desde un archivo de imagen
+def cargar_icono_desde_archivo(ruta_icono):
+    # Cargar la imagen del archivo
+    return Image.open(ruta_icono)
 
-        # Create a menu
-        self.menu = wx.Menu()
-        open_item = self.menu.Append(wx.ID_ANY, "Abrir App")
-        self.menu.AppendSeparator()
-        close_item = self.menu.Append(wx.ID_ANY, "Cerrar App")
-        
-        self.Bind(wx.EVT_MENU, self.on_open, open_item)
-        self.Bind(wx.EVT_MENU, self.on_exit, close_item)
+# Función para salir de la aplicación
+def salir(icon, item):
+    icon.stop()  # Detener el icono de la bandeja
+    sys.exit(0)  # Cerrar la aplicación completamente
 
-    def CreatePopupMenu(self):
-        return self.menu
+# Función para iniciar el ícono en la bandeja del sistema
+def iniciar_icono_bandeja():
+    # Ruta del icono (ajustar si es necesario)
+    ruta_icono = "resources/icono.png"
+    
+    # Cargar el ícono desde el archivo
+    icon_image = cargar_icono_desde_archivo(ruta_icono)
+    
+    # Crear el menú del ícono
+    menu = (item('Salir', salir),)  # Solo una opción de salir
+    
+    # Crear el objeto Icon con el menú
+    icon = pystray.Icon("test_icon", icon_image, "Mi Aplicación", menu)
+    
+    # Iniciar el ícono en un hilo separado
+    icon.run()  # Cambiar a run() directamente sin un hilo adicional
 
-    def on_left_double_click(self, event):
-        self.on_open(event)
-
-    def on_right_click(self, event):
-        self.PopupMenu(self.menu)
-
-    def on_open(self, event):
-        # Aquí puedes agregar el código para abrir la aplicación
-        print("Abriendo la aplicación...")
-        wx.CallAfter(wx.GetApp().Show)
-
-    def on_exit(self, event):
-        wx.CallAfter(wx.GetApp().Exit)
-
-def start_tray_icon(icon_path):
-    app = wx.App(False)  # Create a new wx.App
-    icon = wx.Icon(icon_path)  # Load your icon
-    TrayIcon(icon)  # Create the tray icon
-    app.MainLoop()  # Start the wxPython event loop
-
-def run_tray_icon(icon_path):
-    thread = threading.Thread(target=start_tray_icon, args=(icon_path,))
-    thread.start()
+# Esto se llamará desde el main.py

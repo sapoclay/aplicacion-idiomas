@@ -4,108 +4,112 @@ from exportar_diccionario import exportar_a_pdf
 
 def diccionario_tab(page):
     espacio_extra = ft.Container(height=20)
-    palabra_input = ft.TextField(label="Palabra/Frase", multiline=True, min_lines=5, max_lines=20, width=400,)
-    definicion_input = ft.TextField(label="Definición/Traducción",  multiline=True, min_lines=5, max_lines=20, width=400,)
+    palabra_input = ft.TextField(label="Palabra/Frase", multiline=True, min_lines=5, max_lines=20, width=400)
+    definicion_input = ft.TextField(label="Definición/Traducción", multiline=True, min_lines=5, max_lines=20, width=400)
+    categoria_input = ft.TextField(label="Categoría", width=400)
     buscador_input = ft.TextField(label="Buscar", width=400)
     resultados_column = ft.Column(spacing=10)
-
-    # Variable para controlar el modo de edición
     palabra_editando = None
 
+    # Función auxiliar para mostrar el SnackBar y actualizar la página
+    def mostrar_snackbar(mensaje):
+        page.snackbar = ft.SnackBar(ft.Text(mensaje), open=True)
+        page.add(page.snackbar)
+        page.update()
+
+    # Función para guardar el diccionario
     def guardar_diccionario(e):
-        nonlocal palabra_editando  # Accedemos a la variable de modo edición
+        nonlocal palabra_editando
 
+        # Validación de campos
         if not palabra_input.value.strip():
-            page.snackbar = ft.SnackBar(ft.Text("El campo 'Palabra' es obligatorio."))
-            page.snackbar.open = True
-            page.add(page.snackbar)
-            page.update()
+            mostrar_snackbar("El campo 'Palabra' es obligatorio.")
             return
-
         if not definicion_input.value.strip():
-            page.snackbar = ft.SnackBar(ft.Text("El campo 'Definición' es obligatorio."))
-            page.snackbar.open = True
-            page.add(page.snackbar)
-            page.update()
+            mostrar_snackbar("El campo 'Definición' es obligatorio.")
+            return
+        if not categoria_input.value.strip():
+            mostrar_snackbar("El campo 'Categoría' es obligatorio.")
             return
 
         try:
             if palabra_editando:  # Si estamos en modo edición
-                actualizar_palabra_en_db(palabra_editando, palabra_input.value, definicion_input.value)
-                page.snackbar = ft.SnackBar(ft.Text("Palabra actualizada con éxito."))
+                actualizar_palabra_en_db(palabra_editando, palabra_input.value, definicion_input.value, categoria_input.value)
+                mostrar_snackbar("Palabra actualizada con éxito.")
             else:  # Si es una nueva palabra
-                insert_diccionario(palabra_input.value, definicion_input.value)
-                page.snackbar = ft.SnackBar(ft.Text("Palabra guardada con éxito."))
-
+                insert_diccionario(palabra_input.value, definicion_input.value, categoria_input.value)
+                mostrar_snackbar("Palabra guardada con éxito.")
+            
+            # Limpiar los campos
             palabra_input.value = ""
             definicion_input.value = ""
-            palabra_editando = None  # Reiniciar el modo edición
+            categoria_input.value = ""
+            palabra_editando = None
 
-            page.snackbar.open = True
-            page.add(page.snackbar)
-            actualizar_diccionario()
-            page.update()
+            actualizar_diccionario()  # Actualizar la lista
         except Exception as e:
-            page.snackbar = ft.SnackBar(ft.Text(f"Error al guardar: {str(e)}"))
-            page.snackbar.open = True
-            page.add(page.snackbar)
-            page.update()
+            print(f"Error al guardar: {e}")  # Registro en consola para depuración
+            mostrar_snackbar(f"Error al guardar: {str(e)}")
 
+    # Función para actualizar el diccionario en la vista
     def actualizar_diccionario(busqueda=""):
         palabras = get_diccionario(page)
         resultados_column.controls.clear()
 
+        # Filtrar por búsqueda
         if busqueda:
-            palabras = [p for p in palabras if busqueda.lower() in p[0].lower() or busqueda.lower() in p[1].lower()]
+            palabras = [p for p in palabras if busqueda.lower() in p[0].lower() or busqueda.lower() in p[1].lower() or busqueda.lower() in p[2].lower()]
 
-        resultados_column.controls.append(ft.Row([
-            ft.Text("Palabra", weight="bold", expand=True),
-            ft.Text("Definición", weight="bold", expand=True),
+        # Encabezados (se colocan fuera del bucle)
+        encabezado_fila = ft.Row([
+            ft.Text("Palabra/Frase", weight="bold", expand=True),
+            ft.Text("Definición/Traducción", weight="bold", expand=True),
+            ft.Text("Categoría", weight="bold", expand=True),
             ft.Text("Acciones", weight="bold", width=100)
-        ], alignment=ft.MainAxisAlignment.CENTER))
+        ], alignment=ft.MainAxisAlignment.CENTER)
+        resultados_column.controls.append(encabezado_fila)
 
-        for palabra, definicion in palabras:
-            resultados_column.controls.append(ft.Row([
+        # Agregar filas de palabras, definiciones y categorías
+        for palabra, definicion, categoria in palabras:
+            fila_palabra = ft.Row([
                 ft.Text(palabra, expand=True),
                 ft.Text(definicion, expand=True),
+                ft.Text(categoria, expand=True),
                 ft.Row([
                     ft.IconButton(ft.icons.DELETE, on_click=lambda e, p=palabra: borrar_palabra(p)),
-                    ft.IconButton(ft.icons.EDIT, on_click=lambda e, p=palabra, d=definicion: editar_palabra(p, d))
+                    ft.IconButton(ft.icons.EDIT, on_click=lambda e, p=palabra, d=definicion, c=categoria: editar_palabra(p, d, c))
                 ], alignment=ft.MainAxisAlignment.END)
-            ], alignment=ft.MainAxisAlignment.CENTER))
+            ], alignment=ft.MainAxisAlignment.CENTER)
+            resultados_column.controls.append(fila_palabra)
 
         page.update()
 
-    actualizar_diccionario()
-
+    # Función para buscar palabras
     def buscar_palabra(e):
         actualizar_diccionario(buscador_input.value)
 
+    # Función para limpiar el buscador
     def limpiar_buscador(e):
         buscador_input.value = ""
         page.update()
         actualizar_diccionario()
 
+    # Función para eliminar una palabra
     def borrar_palabra(palabra):
         def confirmar_borrado(e):
             if e.control.data == "Eliminar":
-                if eliminar_palabra_de_db(palabra):
-                    # Crear el SnackBar con el mensaje de éxito
-                    page.snackbar = ft.SnackBar(ft.Text(f"Palabra '{palabra}' eliminada."), open=True)
-                else:
-                    # Crear el SnackBar con el mensaje de error
-                    page.snackbar = ft.SnackBar(ft.Text(f"Error al eliminar la palabra '{palabra}'."), open=True)
-                
-                # Asegurarse de añadir el SnackBar a la página y abrirlo
-                page.add(page.snackbar)
-                page.update()  # Actualiza la página para mostrar el SnackBar
-                
-                # Actualizar el listado del diccionario
-                actualizar_diccionario()
+                try:
+                    if eliminar_palabra_de_db(palabra):
+                        mostrar_snackbar(f"Palabra '{palabra}' eliminada.")
+                    else:
+                        mostrar_snackbar(f"Error al eliminar la palabra '{palabra}'.")
+                except Exception as err:
+                    print(f"Error al eliminar: {err}")
+                    mostrar_snackbar(f"Error al eliminar la palabra: {err}")
 
-            # Cerrar el diálogo
+                actualizar_diccionario()  # Actualizar la lista después de borrar
             page.dialog.open = False
-            page.update()  # Actualizar la página para reflejar el cierre del diálogo
+            page.update()
 
         # Diálogo de confirmación
         page.dialog = ft.AlertDialog(
@@ -117,58 +121,52 @@ def diccionario_tab(page):
             ]
         )
         page.dialog.open = True
-        page.update()  # Actualiza la página para abrir el diálogo
+        page.update()
 
-
-
-    def editar_palabra(palabra, definicion):
+    # Función para editar una palabra
+    def editar_palabra(palabra, definicion, categoria):
         nonlocal palabra_editando
         palabra_input.value = palabra
         definicion_input.value = definicion
-        palabra_editando = palabra  # Guardamos la palabra que estamos editando
+        categoria_input.value = categoria
+        palabra_editando = palabra
         page.update()
 
+    # Configurar los eventos de los inputs
     buscador_input.on_change = buscar_palabra
 
+    # Crear la interfaz scrollable
     scrollable_results = ft.Column(
         controls=[
             ft.Row([
                 buscador_input,
                 ft.IconButton(ft.icons.CLEAR, on_click=limpiar_buscador, tooltip="Limpiar búsqueda")
             ], alignment=ft.MainAxisAlignment.CENTER),
-            ft.Column(
-                controls=[resultados_column],
-                height=700,
-                scroll=ft.ScrollMode.AUTO,
-                expand=True
-            )
+            resultados_column
         ],
-        spacing=30
+        height=700,
+        scroll=ft.ScrollMode.AUTO,
+        expand=True
     )
-    
-    # Crear los botones con tooltips
+
+    # Crear los botones
     boton_guardar = ft.ElevatedButton(
-        "Guardar", 
-        on_click=guardar_diccionario,
-        tooltip="Guardar la palabra y definición en el diccionario"
+        "Guardar", on_click=guardar_diccionario, tooltip="Guardar la palabra y definición en el diccionario"
     )
-
     boton_exportar_pdf = ft.ElevatedButton(
-        "Exportar Diccionario a PDF", 
-        on_click=lambda e: exportar_a_pdf(page),
-        tooltip="Exportar el diccionario como archivo PDF"
+        "Exportar Diccionario a PDF", on_click=lambda e: exportar_a_pdf(page), tooltip="Exportar el diccionario como archivo PDF"
     )
 
-    # Organizar los botones en un Row
+    # Organizar los botones en una fila
     fila_botones = ft.Row(controls=[boton_guardar, boton_exportar_pdf], alignment=ft.MainAxisAlignment.CENTER)
 
+    # Devolver la estructura general
     return ft.Column([
         espacio_extra,
-        ft.Row(
-               [palabra_input,definicion_input],
-               alignment=ft.MainAxisAlignment.CENTER
-        ),        
-        fila_botones,  # Añadir la fila de botones aquí
+        ft.Row([palabra_input, definicion_input], alignment=ft.MainAxisAlignment.CENTER),
+        ft.Row([categoria_input], alignment=ft.MainAxisAlignment.CENTER),
+        ft.Divider(),
+        fila_botones,
         ft.Divider(),
         scrollable_results
     ], expand=True)
